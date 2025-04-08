@@ -198,6 +198,36 @@ in
                   }
                 '';
               };
+
+              extraSettingsPaths = lib.mkOption {
+                type = lib.types.listOf lib.types.path;
+                default = [ ];
+                description = ''
+                  Configuration files to load besides the immutable one defined by the NixOS module.
+                  This can be used to avoid putting credentials in the Nix store, which can be read by any user.
+
+                  These paths will be merged after the configuration defined by the NixOS module.
+                '';
+              };
+
+              extraSettingsGenerator = lib.mkOption {
+                type = lib.types.path;
+                default = pkgs.writeShellScript "nebula-extra-settings-generator" ''
+                  exec yq ea '. as $item ireduce ({}; . * $item )' $@ > $NEBULA_CONFIG_OUTPUT
+                '';
+                defaultText = ''
+		  pkgs.writeShellScript "nebula-extra-settings-generator" '''
+		  exec yq ea '. as $item ireduce ({}; . * $item )' $@ > $NEBULA_CONFIG_OUTPUT
+                  '''
+                '';
+                description = ''
+                  A generator script to merge extra settings into the configuration defined by the NixOS module.
+                  This is invoked in the ExecStartPre phase of the Nebula service.
+
+                  Environment variables:
+                  - NEBULA_CONFIG_OUTPUT: The path to the output file.
+                '';
+              };
             };
           }
         );
@@ -281,7 +311,12 @@ in
             serviceConfig = {
               Type = "notify";
               Restart = "always";
-              ExecStart = "${netCfg.package}/bin/nebula -config ${configFile}";
+              RuntimeDirectory = "nebula/${netName}";
+              RuntimeDirectoryMode = "0700";
+              ExecStartPre = pkgs.writeShellScript "nebula-generate-config" ''
+                NEBULA_CONFIG_OUTPUT=''${RUNTIME_DIRECTORY}/nebula-config.yaml ${netCfg.extraSettingsGenerator} ${configFile} ${builtins.toString netCfg.extraSettingsPaths}
+              '';
+              ExecStart = "${netCfg.package}/bin/nebula -config \${RUNTIME_DIRECTORY}/nebula-config.yaml";
               UMask = "0027";
               CapabilityBoundingSet = capabilities;
               AmbientCapabilities = capabilities;
