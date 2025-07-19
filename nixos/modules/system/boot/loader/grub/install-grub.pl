@@ -577,7 +577,7 @@ my $grubBootPath = $grubBoot->path;
 my $efiSysMountPointRootPath = $efiSysMountPointRoot->path;
 # extraEntries could refer to @bootRoot@, which we have to substitute
 $conf =~ s/\@bootRoot\@/$grubBootPath/g;
-# extraEntries could also refer to @efiRoot@, which may differ from @bootRoot@
+# extraEntries could also refer to @extraRoot@, which may differ from @bootRoot@
 $conf =~ s/\@extraRoot\@/$efiSysMountPointRootPath/g;
 
 # Emit submenus for all system profiles.

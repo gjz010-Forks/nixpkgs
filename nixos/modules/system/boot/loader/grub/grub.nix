@@ -812,6 +812,7 @@ in
             # targets of a replacement in code
             bootPath = null;
             bootRoot = null;
+            extraRoot = null;
           };
           perl = pkgs.perl.withPackages (
             p: with p; [
