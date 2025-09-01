@@ -151,80 +151,6 @@ self: super:
 
   mkfontdir = xorg.mkfontscale;
 
-  libxcb = super.libxcb.overrideAttrs (attrs: {
-    # $dev/include/xcb/xcb.h includes pthread.h
-    propagatedBuildInputs =
-      attrs.propagatedBuildInputs or [ ]
-      ++ lib.optional stdenv.hostPlatform.isMinGW windows.mingw_w64_pthreads;
-    configureFlags = [
-      "--enable-xkb"
-      "--enable-xinput"
-    ] ++ lib.optional stdenv.hostPlatform.isStatic "--disable-shared";
-    outputs = [
-      "out"
-      "dev"
-      "man"
-      "doc"
-    ];
-    meta = attrs.meta // {
-      pkgConfigModules = [
-        "xcb-composite"
-        "xcb-damage"
-        "xcb-dpms"
-        "xcb-dri2"
-        "xcb-dri3"
-        "xcb-glx"
-        "xcb-present"
-        "xcb-randr"
-        "xcb-record"
-        "xcb-render"
-        "xcb-res"
-        "xcb-screensaver"
-        "xcb-shape"
-        "xcb-shm"
-        "xcb-sync"
-        "xcb-xf86dri"
-        "xcb-xfixes"
-        "xcb-xinerama"
-        "xcb-xinput"
-        "xcb-xkb"
-        "xcb-xtest"
-        "xcb-xv"
-        "xcb-xvmc"
-        "xcb"
-      ];
-      platforms = lib.platforms.unix ++ lib.platforms.windows;
-    };
-  });
-
-  libX11 = super.libX11.overrideAttrs (attrs: {
-    outputs = [
-      "out"
-      "dev"
-      "man"
-    ];
-    configureFlags =
-      attrs.configureFlags or [ ]
-      ++ malloc0ReturnsNullCrossFlag
-      ++ lib.optional (stdenv.targetPlatform.useLLVM or false) "ac_cv_path_RAWCPP=cpp";
-    depsBuildBuild =
-      [
-        buildPackages.stdenv.cc
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isStatic [
-        (xorg.buildPackages.libc.static or null)
-      ];
-    preConfigure = ''
-      sed 's,^as_dummy.*,as_dummy="\$PATH",' -i configure
-    '';
-    postInstall = ''
-      # Remove useless DocBook XML files.
-      rm -rf $out/share/doc
-    '';
-    CPP = lib.optionalString stdenv.hostPlatform.isDarwin "clang -E -";
-    propagatedBuildInputs = attrs.propagatedBuildInputs or [ ] ++ [ xorg.xorgproto ];
-  });
-
   libAppleWM = super.libAppleWM.overrideAttrs (attrs: {
     nativeBuildInputs = attrs.nativeBuildInputs ++ [
       autoreconfHook
@@ -232,25 +158,6 @@ self: super:
     ];
     meta = attrs.meta // {
       platforms = lib.platforms.darwin;
-    };
-  });
-
-  libXau = super.libXau.overrideAttrs (attrs: {
-    outputs = [
-      "out"
-      "dev"
-    ];
-    propagatedBuildInputs = attrs.propagatedBuildInputs or [ ] ++ [ xorg.xorgproto ];
-  });
-
-  libXdmcp = super.libXdmcp.overrideAttrs (attrs: {
-    outputs = [
-      "out"
-      "dev"
-      "doc"
-    ];
-    meta = attrs.meta // {
-      pkgConfigModules = [ "xdmcp" ];
     };
   });
 
@@ -407,20 +314,6 @@ self: super:
     passthru = attrs.passthru // {
       inherit freetype fontconfig;
     };
-  });
-
-  libXext = super.libXext.overrideAttrs (attrs: {
-    outputs = [
-      "out"
-      "dev"
-      "man"
-      "doc"
-    ];
-    propagatedBuildInputs = attrs.propagatedBuildInputs or [ ] ++ [
-      xorg.xorgproto
-      xorg.libXau
-    ];
-    configureFlags = attrs.configureFlags or [ ] ++ malloc0ReturnsNullCrossFlag;
   });
 
   libXfixes = super.libXfixes.overrideAttrs (attrs: {
@@ -829,7 +722,6 @@ self: super:
   });
 
   xf86videovmware = super.xf86videovmware.overrideAttrs (attrs: {
-    buildInputs = attrs.buildInputs ++ [ mesa ];
     env.NIX_CFLAGS_COMPILE = toString [ "-Wno-error=address" ]; # gcc12
     meta = attrs.meta // {
       platforms = [
@@ -1032,24 +924,23 @@ self: super:
           prePatch = lib.optionalString stdenv.hostPlatform.isMusl ''
             export CFLAGS+=" -D__uid_t=uid_t -D__gid_t=gid_t"
           '';
-          configureFlags =
-            [
-              "--enable-kdrive" # not built by default
-              "--enable-xephyr"
-              "--enable-xcsecurity" # enable SECURITY extension
-              "--with-default-font-path="
-              # there were only paths containing "${prefix}",
-              # and there are no fonts in this package anyway
-              "--with-xkb-bin-directory=${xorg.xkbcomp}/bin"
-              "--with-xkb-path=${xorg.xkeyboardconfig}/share/X11/xkb"
-              "--with-xkb-output=$out/share/X11/xkb/compiled"
-              "--with-log-dir=/var/log"
-              "--enable-glamor"
-              "--with-os-name=Nix" # r13y, embeds the build machine's kernel version otherwise
-            ]
-            ++ lib.optionals stdenv.hostPlatform.isMusl [
-              "--disable-tls"
-            ];
+          configureFlags = [
+            "--enable-kdrive" # not built by default
+            "--enable-xephyr"
+            "--enable-xcsecurity" # enable SECURITY extension
+            "--with-default-font-path="
+            # there were only paths containing "${prefix}",
+            # and there are no fonts in this package anyway
+            "--with-xkb-bin-directory=${xorg.xkbcomp}/bin"
+            "--with-xkb-path=${xorg.xkeyboardconfig}/share/X11/xkb"
+            "--with-xkb-output=$out/share/X11/xkb/compiled"
+            "--with-log-dir=/var/log"
+            "--enable-glamor"
+            "--with-os-name=Nix" # r13y, embeds the build machine's kernel version otherwise
+          ]
+          ++ lib.optionals stdenv.hostPlatform.isMusl [
+            "--disable-tls"
+          ];
 
           env.NIX_CFLAGS_COMPILE = toString [
             # Needed with GCC 12
@@ -1114,12 +1005,10 @@ self: super:
             ./darwin/stub.patch
           ];
 
-          postPatch =
-            attrs.postPatch
-            + ''
-              substituteInPlace hw/xquartz/mach-startup/stub.c \
-                --subst-var-by XQUARTZ_APP "$out/Applications/XQuartz.app"
-            '';
+          postPatch = attrs.postPatch + ''
+            substituteInPlace hw/xquartz/mach-startup/stub.c \
+              --subst-var-by XQUARTZ_APP "$out/Applications/XQuartz.app"
+          '';
 
           configureFlags = [
             # note: --enable-xquartz is auto
@@ -1157,33 +1046,31 @@ self: super:
   );
 
   # xvfb is used by a bunch of things to run tests
-  # and doesn't support hardware accelerated rendering
-  # so remove it from the rebuild heavy path for mesa
+  # so try to reduce its reverse closure
   xvfb = super.xorgserver.overrideAttrs (old: {
-    configureFlags =
-      [
-        "--enable-xvfb"
-        "--disable-xorg"
-        "--disable-xquartz"
-        "--disable-xwayland"
-        "--disable-glamor"
-        "--disable-glx"
-        "--disable-dri"
-        "--disable-dri2"
-        "--disable-dri3"
-        "--with-xkb-bin-directory=${xorg.xkbcomp}/bin"
-        "--with-xkb-path=${xorg.xkeyboardconfig}/share/X11/xkb"
-        "--with-xkb-output=$out/share/X11/xkb/compiled"
-      ]
-      ++ lib.optional stdenv.hostPlatform.isDarwin [
-        "--without-dtrace"
-      ];
+    configureFlags = [
+      "--enable-xvfb"
+      "--disable-xorg"
+      "--disable-xquartz"
+      "--disable-xwayland"
+      "--with-xkb-bin-directory=${xorg.xkbcomp}/bin"
+      "--with-xkb-path=${xorg.xkeyboardconfig}/share/X11/xkb"
+      "--with-xkb-output=$out/share/X11/xkb/compiled"
+    ]
+    ++ lib.optional stdenv.hostPlatform.isDarwin [
+      "--without-dtrace"
+    ];
 
     buildInputs = old.buildInputs ++ [
+      dri-pkgconfig-stub
+      libdrm
+      libGL
+      mesa-gl-headers
       xorg.pixman
       xorg.libXfont2
       xorg.xtrans
       xorg.libxcvt
+      xorg.libxshmfence
     ];
   });
 
@@ -1230,15 +1117,14 @@ self: super:
       (attrs: {
         nativeBuildInputs = attrs.nativeBuildInputs ++ lib.optional isDarwin bootstrap_cmds;
         depsBuildBuild = [ buildPackages.stdenv.cc ];
-        configureFlags =
-          [
-            "--with-xserver=${xorg.xorgserver.out}/bin/X"
-          ]
-          ++ lib.optionals isDarwin [
-            "--with-bundle-id-prefix=org.nixos.xquartz"
-            "--with-launchdaemons-dir=\${out}/LaunchDaemons"
-            "--with-launchagents-dir=\${out}/LaunchAgents"
-          ];
+        configureFlags = [
+          "--with-xserver=${xorg.xorgserver.out}/bin/X"
+        ]
+        ++ lib.optionals isDarwin [
+          "--with-bundle-id-prefix=org.nixos.xquartz"
+          "--with-launchdaemons-dir=\${out}/LaunchDaemons"
+          "--with-launchagents-dir=\${out}/LaunchAgents"
+        ];
         postPatch = ''
           # Avoid replacement of word-looking cpp's builtin macros in Nix's cross-compiled paths
           substituteInPlace Makefile.in --replace "PROGCPPDEFS =" "PROGCPPDEFS = -Dlinux=linux -Dunix=unix"
@@ -1251,9 +1137,9 @@ self: super:
             xorg.xorgproto
           ];
         postFixup = ''
-          substituteInPlace $out/bin/startx \
-            --replace $out/etc/X11/xinit/xserverrc /etc/X11/xinit/xserverrc \
-            --replace $out/etc/X11/xinit/xinitrc /etc/X11/xinit/xinitrc
+          sed -i $out/bin/startx \
+            -e '/^sysserverrc=/ s:=.*:=/etc/X11/xinit/xserverrc:' \
+            -e '/^sysclientrc=/ s:=.*:=/etc/X11/xinit/xinitrc:'
         '';
         meta = attrs.meta // {
           mainProgram = "xinit";

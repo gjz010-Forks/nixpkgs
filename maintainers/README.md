@@ -86,14 +86,12 @@ When adding users to [`maintainer-list.nix`](./maintainer-list.nix), the followi
 
   Given a maintainer entry like this:
 
-  ``` nix
+  ```nix
   {
     example = {
       email = "user@example.com";
       name = "Example User";
-      keys = [{
-        fingerprint = "0000 0000 2A70 6423 0AED  3C11 F04F 7A19 AAA6 3AFE";
-      }];
+      keys = [ { fingerprint = "0000 0000 2A70 6423 0AED  3C11 F04F 7A19 AAA6 3AFE"; } ];
     };
   }
   ```
@@ -121,9 +119,8 @@ When adding users to [`maintainer-list.nix`](./maintainer-list.nix), the followi
 
   Note: GitHub's "Verified" label does not display the user's full key fingerprint, and should not be used for validating the key matches.
 
-- If the user has specified a `github` account name, ensure they have also specified a `githubId` and verify the two match.
+- Ensure that the user has specified a `github` account name and a `githubId` and verify the two match.
 
-  Maintainer entries that include a `github` field must also include their `githubId`.
   People can and do change their GitHub name frequently, and the ID is used as the official and stable identity of the maintainer.
 
   Given a maintainer entry like this:
@@ -141,7 +138,7 @@ When adding users to [`maintainer-list.nix`](./maintainer-list.nix), the followi
 
   First, make sure that the listed GitHub handle matches the author of the commit.
 
-  Then, visit the URL `https://api.github.com/users/ghost` and validate that the `id` field matches the provided `githubId`.
+  Then, visit the URL `https://api.github.com/user/10137` and validate that the `login` field matches the provided `github` handle.
 
 ### Maintainer teams
 

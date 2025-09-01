@@ -3,7 +3,7 @@
   stdenv,
   buildPythonPackage,
   fetchFromGitHub,
-  fetchpatch,
+  pythonAtLeast,
   pythonOlder,
   replaceVars,
 
@@ -43,7 +43,7 @@
 
 buildPythonPackage rec {
   pname = "django";
-  version = "5.2.4";
+  version = "5.2.5";
   pyproject = true;
 
   disabled = pythonOlder "3.10";
@@ -52,26 +52,30 @@ buildPythonPackage rec {
     owner = "django";
     repo = "django";
     rev = "refs/tags/${version}";
-    hash = "sha256-0AtH3vyEeQUKep17j5koiUi/ACgLc9JLMxkwWovCkvE=";
+    hash = "sha256-1Lw0L+mPynf9CmioiTQhePgqCLniUkv9E0ZIoHhhBTs=";
   };
 
-  patches =
-    [
-      (replaceVars ./django_5_set_zoneinfo_dir.patch {
-        zoneinfo = tzdata + "/share/zoneinfo";
-      })
-      # prevent tests from messing with our pythonpath
-      ./django_5_tests_pythonpath.patch
-      # disable test that expects timezone issues
-      ./django_5_disable_failing_tests.patch
-    ]
-    ++ lib.optionals withGdal [
-      (replaceVars ./django_5_set_geos_gdal_lib.patch {
-        geos = geos;
-        gdal = gdal;
-        extension = stdenv.hostPlatform.extensions.sharedLibrary;
-      })
-    ];
+  patches = [
+    (replaceVars ./django_5_set_zoneinfo_dir.patch {
+      zoneinfo = tzdata + "/share/zoneinfo";
+    })
+    # prevent tests from messing with our pythonpath
+    ./django_5_tests_pythonpath.patch
+    # disable test that expects timezone issues
+    ./django_5_disable_failing_tests.patch
+  ]
+  ++ lib.optionals (pythonAtLeast "3.13") [
+    # https://code.djangoproject.com/ticket/36499
+    # https://github.com/django/django/pull/19639
+    ./3.13.6-html-parser.patch
+  ]
+  ++ lib.optionals withGdal [
+    (replaceVars ./django_5_set_geos_gdal_lib.patch {
+      geos = geos;
+      gdal = gdal;
+      extension = stdenv.hostPlatform.extensions.sharedLibrary;
+    })
+  ];
 
   postPatch = ''
     substituteInPlace tests/utils_tests/test_autoreload.py \
@@ -106,7 +110,8 @@ buildPythonPackage rec {
     selenium
     tblib
     tzdata
-  ] ++ lib.flatten (lib.attrValues optional-dependencies);
+  ]
+  ++ lib.flatten (lib.attrValues optional-dependencies);
 
   preCheck = ''
     # make sure the installed library gets imported

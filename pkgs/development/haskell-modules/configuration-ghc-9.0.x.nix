@@ -1,4 +1,8 @@
-{ pkgs, haskellLib }:
+{
+  config,
+  pkgs,
+  haskellLib,
+}:
 
 with haskellLib;
 
@@ -108,7 +112,13 @@ self: super: {
 
   doctest = dontCheck super.doctest;
 
-  haskell-language-server = throw "haskell-language-server has dropped support for ghc 9.0 in version 2.4.0.0, please use a newer ghc version or an older nixpkgs version";
+  haskell-language-server =
+    lib.throwIf config.allowAliases
+      "haskell-language-server has dropped support for ghc 9.0 in version 2.4.0.0, please use a newer ghc version or an older nixpkgs version"
+      (markBroken super.haskell-language-server);
+
+  # test suite depends on vcr since hpack >= 0.38.1 which requires GHC2021
+  hpack_0_38_1 = dontCheck super.hpack_0_38_1;
 
   # Needs to use ghc-lib due to incompatible GHC
   ghc-tags = doDistribute self.ghc-tags_1_5;

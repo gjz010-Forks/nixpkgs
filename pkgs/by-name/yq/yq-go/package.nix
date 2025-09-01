@@ -4,30 +4,40 @@
   buildGoModule,
   fetchFromGitHub,
   installShellFiles,
+  pandoc,
   runCommand,
   nix-update-script,
 }:
 
 buildGoModule (finalAttrs: {
   pname = "yq-go";
-  version = "4.46.1";
+  version = "4.47.1";
 
   src = fetchFromGitHub {
     owner = "mikefarah";
     repo = "yq";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-lMmcqAe1A/ET/2Dju6Gj0+I/g4z23EmtuRio0NYTHws=";
+    hash = "sha256-r9vHXDviQADv7yIwwzCHKjvHSNzZnJATwiWAaFW4vXs=";
   };
 
-  vendorHash = "sha256-wfn8u8I4dyAD4PbeiQGSai1gQ2ZDFBi2mysZVKa0mkA=";
+  vendorHash = "sha256-mG9rKla2ZSEbOvSlV6jl7MBoo0dDI//CMcR2hLET4K4=";
 
-  nativeBuildInputs = [ installShellFiles ];
+  nativeBuildInputs = lib.optionalAttrs (stdenv.buildPlatform.canExecute stdenv.hostPlatform) [
+    installShellFiles
+    pandoc
+  ];
 
   postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd yq \
       --bash <($out/bin/yq shell-completion bash) \
       --fish <($out/bin/yq shell-completion fish) \
       --zsh <($out/bin/yq shell-completion zsh)
+
+    patchShebangs ./scripts/generate-man-page*
+    export MAN_HEADER="yq (https://github.com/mikefarah/yq/) version ${finalAttrs.version}"
+    ./scripts/generate-man-page-md.sh
+    ./scripts/generate-man-page.sh
+    installManPage yq.1
   '';
 
   passthru = {

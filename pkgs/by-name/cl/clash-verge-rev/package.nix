@@ -12,13 +12,13 @@
 }:
 let
   pname = "clash-verge-rev";
-  version = "2.3.1";
+  version = "2.4.0";
 
   src = fetchFromGitHub {
     owner = "clash-verge-rev";
     repo = "clash-verge-rev";
     tag = "v${version}";
-    hash = "sha256-NNP/NDC/Y4oBQftM6Z+pOFMEtdtvcIMYyY3sGwkpmrc=";
+    hash = "sha256-Kw2QXePBjDs0kUMPLE7UyN/v9GvsMNYi1rxcy+O6EWs=";
   };
 
   src-service = fetchFromGitHub {
@@ -29,8 +29,8 @@ let
   };
 
   service-cargo-hash = "sha256-HET7/Lyc0Ip1f9WMVzUWr0QFuL8YN3dgZdK0adl/rYc=";
-  pnpm-hash = "sha256-bhWaDP0gHJC6Mx9QFl4Ltk7y5jozt0eLtsPOWg821Yw=";
-  vendor-hash = "sha256-UkiPJNr5leKuffrrh8n2uhCe/QVjIb4S9heZXP7oKqw=";
+  pnpm-hash = "sha256-O6JO5sW3eKjOPcnu2JDnXEUnR2Yma+SkRMOfEjG5X/E=";
+  vendor-hash = "sha256-kUPzKfrcMaGAMGzYy666I9l3ctac7b1xTCO8oMA9fYg=";
 
   service = callPackage ./service.nix {
     inherit
@@ -64,8 +64,7 @@ let
     license = lib.licenses.gpl3Only;
     mainProgram = "clash-verge";
     maintainers = with lib.maintainers; [
-      Guanran928
-      bot-wxt1221
+      hhr2020
     ];
     platforms = lib.platforms.linux;
   };

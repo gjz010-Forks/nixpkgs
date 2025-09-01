@@ -19,7 +19,7 @@ let
     d.stopwords
   ]);
 
-  version = "0.85.1";
+  version = "0.86.1";
   aider-chat = python3Packages.buildPythonApplication {
     pname = "aider-chat";
     inherit version;
@@ -29,7 +29,7 @@ let
       owner = "Aider-AI";
       repo = "aider";
       tag = "v${version}";
-      hash = "sha256-T2v07AFhrpq9a3XEU2B2orSu0afZFUsb3FRTBcJHDoQ=";
+      hash = "sha256-UmLcE5gin1iILIY5okl5ac2vtiF30txUFjtC0mouBhs=";
     };
 
     pythonRelaxDeps = true;
@@ -146,6 +146,8 @@ let
     ];
 
     patches = [
+      ./fix-tree-sitter.patch
+
       (replaceVars ./fix-flake8-invoke.patch {
         flake8 = lib.getExe python3Packages.flake8;
       })
@@ -154,35 +156,32 @@ let
     disabledTestPaths = [
       # Tests require network access
       "tests/scrape/test_scrape.py"
-      "tests/basic/test_repomap.py"
       # Expected 'mock' to have been called once
       "tests/help/test_help.py"
     ];
 
-    disabledTests =
-      [
-        # Tests require network
-        "test_urls"
-        "test_get_commit_message_with_custom_prompt"
-        "test_cmd_tokens_output"
-        # FileNotFoundError
-        "test_get_commit_message"
-        # Expected 'launch_gui' to have been called once
-        "test_browser_flag_imports_streamlit"
-        # AttributeError
-        "test_simple_send_with_retries"
-        # Expected 'check_version' to have been called once
-        "test_main_exit_calls_version_check"
-        # AssertionError: assert 2 == 1
-        "test_simple_send_non_retryable_error"
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isDarwin [
-        # Tests fails on darwin
-        "test_dark_mode_sets_code_theme"
-        "test_default_env_file_sets_automatic_variable"
-        # FileNotFoundError: [Errno 2] No such file or directory: 'vim'
-        "test_pipe_editor"
-      ];
+    disabledTests = [
+      # Tests require network
+      "test_urls"
+      "test_get_commit_message_with_custom_prompt"
+      # FileNotFoundError
+      "test_get_commit_message"
+      # Expected 'launch_gui' to have been called once
+      "test_browser_flag_imports_streamlit"
+      # AttributeError
+      "test_simple_send_with_retries"
+      # Expected 'check_version' to have been called once
+      "test_main_exit_calls_version_check"
+      # AssertionError: assert 2 == 1
+      "test_simple_send_non_retryable_error"
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      # Tests fails on darwin
+      "test_dark_mode_sets_code_theme"
+      "test_default_env_file_sets_automatic_variable"
+      # FileNotFoundError: [Errno 2] No such file or directory: 'vim'
+      "test_pipe_editor"
+    ];
 
     makeWrapperArgs = [
       "--set"
@@ -222,15 +221,16 @@ let
     passthru = {
       withOptional =
         {
-          withPlaywright ? false,
-          withBrowser ? false,
-          withHelp ? false,
-          withBedrock ? false,
           withAll ? false,
+          withPlaywright ? withAll,
+          withBrowser ? withAll,
+          withHelp ? withAll,
+          withBedrock ? withAll,
           ...
         }:
         aider-chat.overridePythonAttrs (
           {
+            pname,
             dependencies,
             makeWrapperArgs,
             propagatedBuildInputs ? [ ],
@@ -238,20 +238,26 @@ let
           }:
 
           {
+            pname =
+              pname
+              + lib.optionalString withPlaywright "-playwright"
+              + lib.optionalString withBrowser "-browser"
+              + lib.optionalString withHelp "-help"
+              + lib.optionalString withBedrock "-bedrock";
+
             dependencies =
               dependencies
-              ++ lib.optionals (withAll || withPlaywright) aider-chat.optional-dependencies.playwright
-              ++ lib.optionals (withAll || withBrowser) aider-chat.optional-dependencies.browser
-              ++ lib.optionals (withAll || withHelp) aider-chat.optional-dependencies.help
-              ++ lib.optionals (withAll || withBedrock) aider-chat.optional-dependencies.bedrock;
+              ++ lib.optionals withPlaywright aider-chat.optional-dependencies.playwright
+              ++ lib.optionals withBrowser aider-chat.optional-dependencies.browser
+              ++ lib.optionals withHelp aider-chat.optional-dependencies.help
+              ++ lib.optionals withBedrock aider-chat.optional-dependencies.bedrock;
 
             propagatedBuildInputs =
-              propagatedBuildInputs
-              ++ lib.optionals (withAll || withPlaywright) [ playwright-driver.browsers ];
+              propagatedBuildInputs ++ lib.optionals withPlaywright [ playwright-driver.browsers ];
 
             makeWrapperArgs =
               makeWrapperArgs
-              ++ lib.optionals (withAll || withPlaywright) [
+              ++ lib.optionals withPlaywright [
                 "--set"
                 "PLAYWRIGHT_BROWSERS_PATH"
                 "${playwright-driver.browsers}"
@@ -259,7 +265,7 @@ let
                 "PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS"
                 "true"
               ]
-              ++ lib.optionals (withAll || withHelp) [
+              ++ lib.optionals withHelp [
                 "--set"
                 "NLTK_DATA"
                 "${aider-nltk-data}"
